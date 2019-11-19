@@ -11,6 +11,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from scipy.linalg import pinv2, svd
 from scipy.sparse.linalg import svds
+from statsmodels.stats.weightstats import DescrStatsW
 
 from ..base import BaseEstimator, RegressorMixin, TransformerMixin
 from ..base import MultiOutputMixin
@@ -95,24 +96,36 @@ def _svd_cross_product(X, Y):
     return u, v
 
 
-def _center_scale_xy(X, Y, scale=True):
+def _center_scale_xy(X, Y, weight,scale=True):
     """ Center X, Y and scale if the scale parameter==True
 
     Returns
     -------
         X, Y, x_mean, y_mean, x_std, y_std
     """
+    weighted_stats_X=DescrStatsW(X, weights=weight, ddof=0)
+    X_weighted_mean=weighted_stats_X.mean
+    X_weighted_std=weighted_stats_X.std
+    scaled_X=(X-X_weighted_mean)/X_weighted_std
+    weighted_stats_y= DescrStatsW(y, weights=weight, ddof=0)
+    y_weighted_mean=weighted_stats_y.mean
+    y_weighted_std = weighted_stats_y.std
+    scaled_y=(y-y_weighted_mean)/y_weighted_std
+    scaled_y=scaled_y.reshape(-1,1)
+    weighted_params=[weighted_stats_X,weighted_stats_y]
+    
+    
     # center
-    x_mean = X.mean(axis=0)
+    x_mean = X_weighted_mean
     X -= x_mean
-    y_mean = Y.mean(axis=0)
+    y_mean = y_weighted_mean
     Y -= y_mean
     # scale
     if scale:
-        x_std = X.std(axis=0, ddof=1)
+        x_std = X_weighted_std
         x_std[x_std == 0.0] = 1.0
         X /= x_std
-        y_std = Y.std(axis=0, ddof=1)
+        y_std = y_weighted_std
         y_std[y_std == 0.0] = 1.0
         Y /= y_std
     else:
@@ -247,8 +260,9 @@ class _PLS(TransformerMixin, RegressorMixin, MultiOutputMixin, BaseEstimator,
         self.max_iter = max_iter
         self.tol = tol
         self.copy = copy
+        self.weights=None
 
-    def fit(self, X, Y):
+    def fit(self, X, Y,weight):
         """Fit model to data.
 
         Parameters
@@ -269,6 +283,9 @@ class _PLS(TransformerMixin, RegressorMixin, MultiOutputMixin, BaseEstimator,
         Y = check_array(Y, dtype=np.float64, copy=self.copy, ensure_2d=False)
         if Y.ndim == 1:
             Y = Y.reshape(-1, 1)
+        
+        
+        self.weights=weight
 
         n = X.shape[0]
         p = X.shape[1]
@@ -287,7 +304,7 @@ class _PLS(TransformerMixin, RegressorMixin, MultiOutputMixin, BaseEstimator,
             raise ValueError('The deflation mode is unknown')
         # Scale (in place)
         X, Y, self.x_mean_, self.y_mean_, self.x_std_, self.y_std_ = (
-            _center_scale_xy(X, Y, self.scale))
+            _center_scale_xy(X, Y,self.weight, self.scale))
         # Residuals (deflated) matrices
         Xk = X
         Yk = Y
