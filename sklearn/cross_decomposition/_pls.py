@@ -304,7 +304,7 @@ class _PLS(TransformerMixin, RegressorMixin, MultiOutputMixin, BaseEstimator,
             raise ValueError('The deflation mode is unknown')
         # Scale (in place)
         X, Y, self.x_mean_, self.y_mean_, self.x_std_, self.y_std_ = (
-            _center_scale_xy(X, Y,self.weight, self.scale))
+            _center_scale_xy(X, Y,self.weights, self.scale))
         # Residuals (deflated) matrices
         Xk = X
         Yk = Y
