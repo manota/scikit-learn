@@ -106,13 +106,9 @@ def _center_scale_xy(X, Y, weight,scale=True):
     weighted_stats_X=DescrStatsW(X, weights=weight, ddof=0)
     X_weighted_mean=weighted_stats_X.mean
     X_weighted_std=weighted_stats_X.std
-    scaled_X=(X-X_weighted_mean)/X_weighted_std
-    weighted_stats_y= DescrStatsW(y, weights=weight, ddof=0)
+    weighted_stats_y= DescrStatsW(Y, weights=weight, ddof=0)
     y_weighted_mean=weighted_stats_y.mean
     y_weighted_std = weighted_stats_y.std
-    scaled_y=(y-y_weighted_mean)/y_weighted_std
-    scaled_y=scaled_y.reshape(-1,1)
-    weighted_params=[weighted_stats_X,weighted_stats_y]
     
     
     # center
